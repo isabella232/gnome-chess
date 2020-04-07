@@ -133,11 +133,11 @@ Copyright © 2015–2016 Sahil Sareen""";
 
     private void display_no_engine_info_bar ()
     {
-        var label = new Label (_("No chess engine is installed. You will not be able to play against the computer."));
+        var label = new Label (_("No chess engine is installed. You will not be able to play against the computer."));  // TODO init with label
         label.set_wrap (true);
         label.show ();
 
-        info_bar.get_content_area ().add (label);
+        info_bar.add_child (label);
         info_bar.set_message_type (MessageType.ERROR);
         info_bar.set_show_close_button (true);
         info_bar.response.connect (() => info_bar.destroy ());
