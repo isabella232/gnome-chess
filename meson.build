@@ -29,10 +29,10 @@ bindir = join_paths(get_option('prefix'), get_option('bindir'))
 # Dependencies
 min_glib_version = '2.44.0'
 
-gio = dependency('gio-unix-2.0', version: '>=' + min_glib_version)
-glib = dependency('glib-2.0', version: '>=' + min_glib_version)
+gio     = dependency('gio-unix-2.0', version: '>=' + min_glib_version)
+glib    = dependency('glib-2.0', version: '>=' + min_glib_version)
 gmodule = dependency('gmodule-2.0', version: '>=' + min_glib_version)
-gtk = dependency('gtk+-3.0', version: '>= 3.20.0')
+gtk     = dependency('gtk4', version: '>= 3.99.1')
 librsvg = dependency('librsvg-2.0', version: '>= 2.32.0')
 
 posix = meson.get_compiler('vala').find_library('posix')
