@@ -11,43 +11,43 @@
             <property name="title" translatable="yes" context="shortcut window">General</property>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;Ctrl&gt;N</property>
+                <property name="accelerator">&lt;Control&gt;n</property>
                 <property name="title" translatable="yes" context="shortcut window">Start a new game</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;Ctrl&gt;O</property>
+                <property name="accelerator">&lt;Control&gt;o</property>
                 <property name="title" translatable="yes" context="shortcut window">Open a saved game</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;Ctrl&gt;P Pause</property>
+                <property name="accelerator">&lt;Control&gt;p Pause</property>
                 <property name="title" translatable="yes" context="shortcut window">Pause the game</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;Ctrl&gt;S</property>
+                <property name="accelerator">&lt;Control&gt;s</property>
                 <property name="title" translatable="yes" context="shortcut window">Save the game</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;Shift&gt;&lt;Ctrl&gt;S</property>
+                <property name="accelerator">&lt;Shift&gt;&lt;Control&gt;s</property>
                 <property name="title" translatable="yes" context="shortcut window">Save the game with a different name</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;Ctrl&gt;Z</property>
+                <property name="accelerator">&lt;Control&gt;z</property>
                 <property name="title" translatable="yes" context="shortcut window">Undo move</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;Ctrl&gt;Q</property>
+                <property name="accelerator">&lt;Control&gt;q</property>
                 <property name="title" translatable="yes" context="shortcut window">Quit</property>
               </object>
             </child>
@@ -99,7 +99,7 @@
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="accelerator">&lt;Primary&gt;question</property>
+                <property name="accelerator">&lt;Control&gt;question</property>
                 <property name="title" translatable="yes" context="shortcut window">Show Keyboard Shortcuts</property>
               </object>
             </child>
