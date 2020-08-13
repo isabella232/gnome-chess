@@ -46,17 +46,23 @@ public class ChessView : Gtk.DrawingArea
         set_draw_func (draw);
     }
 
-    public override bool configure_event (Gdk.EventConfigure event)
+    int old_width  = 0;
+    int old_height = 0;
+    private inline void configure_size (int new_width, int new_height)
     {
-        int short_edge = int.min (get_allocated_width (), get_allocated_height ());
+        if (old_width  == new_width
+         && old_height == new_height)
+            return;
+        old_width  = new_width;
+        old_height = new_height;
+
+        int short_edge = int.min (new_width, new_height);
 
         square_size = (int) Math.floor ((short_edge - 2 * border) / 9.0);
         var extra = square_size * 0.1;
         if (extra < 3)
             extra = 3;
         selected_square_size = square_size + 2 * (int) (extra + 0.5);
-
-        return true;
     }
 
     private void render_piece (Cairo.Context c1, Cairo.Context c2, string name, int offset)
@@ -114,6 +120,7 @@ public class ChessView : Gtk.DrawingArea
 
     private inline void draw (Gtk.DrawingArea _this, Cairo.Context c, int new_width, int new_height)
     {
+        configure_size (new_width, new_height);
         load_theme (c);
 
         c.translate (new_width / 2, new_height / 2);
