@@ -159,7 +159,6 @@ Copyright © 2015–2016 Sahil Sareen""";
         window.set_default_size (settings.get_int ("width"), settings.get_int ("height"));
         if (settings.get_boolean ("maximized"))
             window.maximize ();
-        window.size_allocate.connect (size_allocate_cb);
         window.map.connect (init_state_watcher);
 
         info_bar = (InfoBar) builder.get_object ("info_bar");
@@ -279,18 +278,6 @@ Copyright © 2015–2016 Sahil Sareen""";
         navigation_box.set_orientation ((layout_mode == LayoutMode.NORMAL) ? Orientation.HORIZONTAL : Orientation.VERTICAL);
     }
 
-    private void size_allocate_cb (Allocation allocation)
-    {
-        if (window_is_maximized || window_is_tiled || window_is_fullscreen)
-            return;
-        window.get_size (out window_width, out window_height);
-
-        if (window_width <= 500 && layout_mode == LayoutMode.NORMAL)
-            set_layout_mode (LayoutMode.NARROW);
-        else if (window_width > 500 && layout_mode == LayoutMode.NARROW)
-            set_layout_mode (LayoutMode.NORMAL);
-    }
-
     private inline void init_state_watcher ()
     {
         Gdk.Surface? nullable_surface = window.get_surface ();     // TODO report bug, get_surface() returns a nullable Surface
@@ -298,6 +285,20 @@ Copyright © 2015–2016 Sahil Sareen""";
             assert_not_reached ();
         surface = (Gdk.Toplevel) (!) nullable_surface;
         surface.notify ["state"].connect (on_window_state_event);
+        surface.size_changed.connect (on_size_changed);
+    }
+
+    private inline void on_size_changed (Gdk.Surface _surface, int width, int height)
+    {
+        if (window_is_maximized || window_is_tiled || window_is_fullscreen)
+            return;
+        window_width  = width;
+        window_height = height;
+
+        if (window_width <= 500 && layout_mode == LayoutMode.NORMAL)
+            set_layout_mode (LayoutMode.NARROW);
+        else if (window_width > 500 && layout_mode == LayoutMode.NARROW)
+            set_layout_mode (LayoutMode.NORMAL);
     }
 
     private Gdk.Toplevel surface;
