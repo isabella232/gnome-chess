@@ -396,10 +396,10 @@ Copyright © 2015–2016 Sahil Sareen""";
     {
         starting = true;
 
-        if (game_file != null && game_file.get_path () != autosave_filename)
-            headerbar.set_subtitle (game_file.get_basename ());
-        else
-            headerbar.set_subtitle (null);
+//        if (game_file != null && game_file.get_path () != autosave_filename)
+//            headerbar.set_subtitle (game_file.get_basename ());
+//        else
+//            headerbar.set_subtitle (null);
 
         var model = (Gtk.ListStore) history_combo.model;
         model.clear ();
@@ -1348,7 +1348,7 @@ Copyright © 2015–2016 Sahil Sareen""";
         }
 
         window.set_title (title);
-        headerbar.set_subtitle (reason);
+//        headerbar.set_subtitle (reason);
 
         white_time_label.queue_draw ();
         black_time_label.queue_draw ();
@@ -2228,7 +2228,7 @@ Copyright © 2015–2016 Sahil Sareen""";
                     save_dialog = null;
 
                     pgn_game.write (game_file);
-                    headerbar.set_subtitle (game_file.get_basename ());
+//                    headerbar.set_subtitle (game_file.get_basename ());
                     disable_window_action (SAVE_GAME_ACTION_NAME);
                     game_needs_saving = false;
                 }
