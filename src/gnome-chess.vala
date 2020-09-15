@@ -1165,36 +1165,36 @@ Copyright © 2015–2016 Sahil Sareen""";
         {
             if (game.current_player.color == Color.WHITE)
                 /* Window title on a White human's turn if he is in check */
-                headerbar.set_title (_("White is in Check"));
+                window.set_title (_("White is in Check"));
             else
                 /* Window title on a Black human's turn if he is in check */
-                headerbar.set_title (_("Black is in Check"));
+                window.set_title (_("Black is in Check"));
         }
         else if (game.current_state.last_move != null &&
                  game.current_state.last_move.en_passant)
         {
             if (game.current_player.color == Color.WHITE)
-                headerbar.set_title (_("Black performed an en passant capture"));
+                window.set_title (_("Black performed an en passant capture"));
             else
-                headerbar.set_title (_("White performed an en passant capture"));
+                window.set_title (_("White performed an en passant capture"));
         }
         else if (game.current_player.color == Color.WHITE)
         {
             if (human_player == null || human_player.color == Color.WHITE)
                 /* Window title on White's turn if White is human */
-                headerbar.set_title (_("White to Move"));
+                window.set_title (_("White to Move"));
             else
                 /* Window title on White's turn if White is a computer */
-                headerbar.set_title (_("White is Thinking…"));
+                window.set_title (_("White is Thinking…"));
         }
         else
         {
             if (human_player == null || human_player.color == Color.BLACK)
                 /* Window title on Black's turn if Black is human */
-                headerbar.set_title (_("Black to Move"));
+                window.set_title (_("Black to Move"));
             else
                 /* Window title on Black's turn if Black is a computer */
-                headerbar.set_title (_("Black is Thinking…"));
+                window.set_title (_("Black is Thinking…"));
         }
     }
 
@@ -1347,7 +1347,7 @@ Copyright © 2015–2016 Sahil Sareen""";
              break;
         }
 
-        headerbar.set_title (title);
+        window.set_title (title);
         headerbar.set_subtitle (reason);
 
         white_time_label.queue_draw ();
