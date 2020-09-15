@@ -193,10 +193,9 @@ Copyright © 2015–2016 Sahil Sareen""";
                                                                                       "Pause"   });
         add_window (window);
 
-        scene = new ChessScene ();
+        scene = new ChessScene (window);
         scene.is_human.connect ((p) => { return p == human_player; });
         scene.changed.connect (scene_changed_cb);
-        scene.choose_promotion_type.connect (show_promotion_type_selector);
 
         settings.bind ("show-move-hints", scene, "show-move-hints", SettingsBindFlags.GET);
         settings.bind ("show-numbering", scene, "show-numbering", SettingsBindFlags.GET);
@@ -323,92 +322,6 @@ Copyright © 2015–2016 Sahil Sareen""";
         window_is_fullscreen = (state & Gdk.ToplevelState.FULLSCREEN) != 0;
         /* tiled: not saved, but should not change saved window size */
         window_is_tiled      = (state & tiled_state)                  != 0;
-    }
-
-    public PieceType? show_promotion_type_selector ()
-    {
-        Builder promotion_type_selector_builder = new Builder.from_resource ("/org/gnome/Chess/ui/promotion-type-selector.ui");
-
-        Dialog promotion_type_selector_dialog = (Dialog) promotion_type_selector_builder.get_object ("dialog_promotion_type_selector");
-        promotion_type_selector_dialog.transient_for = window;
-
-        string color;
-        if (game.current_player.color == Color.WHITE)
-            color = "white";
-        else
-            color = "black";
-
-        var filename = Path.build_filename (PKGDATADIR, "pieces", scene.theme_name, "%sQueen.svg".printf (color));
-        set_piece_image ((Image) promotion_type_selector_builder.get_object ("image_queen"), filename);
-
-        filename = Path.build_filename (PKGDATADIR, "pieces", scene.theme_name, "%sKnight.svg".printf (color));
-        set_piece_image ((Image) promotion_type_selector_builder.get_object ("image_knight"), filename);
-
-        filename = Path.build_filename (PKGDATADIR, "pieces", scene.theme_name, "%sRook.svg".printf (color));
-        set_piece_image ((Image) promotion_type_selector_builder.get_object ("image_rook"), filename);
-
-        filename = Path.build_filename (PKGDATADIR, "pieces", scene.theme_name, "%sBishop.svg".printf (color));
-        set_piece_image ((Image) promotion_type_selector_builder.get_object ("image_bishop"), filename);
-
-     // promotion_type_selector_builder.connect_signals (this);
-
-        PieceType? selection = null;
-        int choice = promotion_type_selector_dialog.run ();
-        switch (choice)
-        {
-        case PromotionTypeSelected.QUEEN:
-            selection = PieceType.QUEEN;
-            break;
-        case PromotionTypeSelected.KNIGHT:
-            selection = PieceType.KNIGHT;
-            break;
-        case PromotionTypeSelected.ROOK:
-            selection = PieceType.ROOK;
-            break;
-        case PromotionTypeSelected.BISHOP:
-            selection = PieceType.BISHOP;
-            break;
-        }
-        promotion_type_selector_dialog.destroy ();
-
-        return selection;
-    }
-
-    private void set_piece_image (Image image, string filename)
-    {
-//        int width, height;
-//        if (!icon_size_lookup (IconSize.DIALOG, out width, out height))
-//            return;
-        int width = 100;
-        int height = 100;
-
-        try
-        {
-            var h = new Rsvg.Handle.from_file (filename);
-
-            var s = new Cairo.ImageSurface (Cairo.Format.ARGB32, width, height);
-            var c = new Cairo.Context (s);
-            var m = Cairo.Matrix.identity ();
-            m.scale ((double) width / h.width, (double) height / h.height);
-            c.set_matrix (m);
-            h.render_cairo (c);
-
-            var p = Gdk.pixbuf_get_from_surface (s, 0, 0, width, height);
-            image.set_from_pixbuf (p);
-        }
-        catch (Error e)
-        {
-            warning ("Failed to load image %s: %s", filename, e.message);
-            return;
-        }
-    }
-
-    enum PromotionTypeSelected
-    {
-        QUEEN,
-        KNIGHT,
-        ROOK,
-        BISHOP
     }
 
     public void quit_game ()
@@ -1448,10 +1361,16 @@ Copyright © 2015–2016 Sahil Sareen""";
 //        return false;
 //    }
 
-    private bool prompt_save_game (string prompt_text)
+    private void prompt_save_game (string prompt_text, bool should_open_game)
     {
         if (!game_needs_saving)
-            return true;
+        {
+            if (should_open_game)
+                open_game ();
+            else
+                start_new_game ();
+            return;
+        }
 
         var dialog = new MessageDialog (window,
                                         DialogFlags.MODAL,
@@ -1471,26 +1390,31 @@ Copyright © 2015–2016 Sahil Sareen""";
             dialog.add_button (_("_Save game log"), ResponseType.YES);
         }
 
-        var result = dialog.run ();
-        dialog.destroy ();
+        dialog.response.connect ((_dialog, response) => {
+                _dialog.destroy ();
 
-        if (result == ResponseType.CANCEL || result == ResponseType.DELETE_EVENT)
-        {
-            return false;
-        }
-        else if (result == ResponseType.YES)
-        {
-            present_save_dialog ();
-        }
-        else
-        {
-            warn_if_fail (result == ResponseType.NO);
-            /* Remove completed game from history */
-            game_needs_saving = false;
-            autosave ();
-        }
+                if (response == ResponseType.CANCEL || response == ResponseType.DELETE_EVENT)
+                    return;
 
-        return true;
+                if (response == ResponseType.YES)
+                {
+                    present_save_dialog ();
+                }
+                else
+                {
+                    warn_if_fail (response == ResponseType.NO);
+                    /* Remove completed game from history */
+                    game_needs_saving = false;
+                    autosave ();
+                }
+
+                if (should_open_game)
+                    open_game ();
+                else
+                    start_new_game ();
+            });
+
+        dialog.present ();
     }
 
     private void present_claim_draw_dialog ()
@@ -1526,23 +1450,20 @@ Copyright © 2015–2016 Sahil Sareen""";
                             _("_Claim Draw"), ResponseType.ACCEPT,
                             null);
 
-        var response = dialog.run ();
-        dialog.destroy ();
+        dialog.response.connect ((_dialog, response) => {
+                _dialog.destroy ();
 
-        if (response == ResponseType.ACCEPT)
-        {
-            game.current_player.claim_draw ();
-        }
-        else
-        {
-            game.unpause ();
-        }
+                if (response == ResponseType.ACCEPT)
+                    game.current_player.claim_draw ();
+                else
+                    game.unpause ();
+            });
+        dialog.present ();
     }
 
     public void new_game_cb ()
     {
-        if (prompt_save_game (_("Save this game before starting a new one?")))
-            start_new_game ();
+        prompt_save_game (_("Save this game before starting a new one?"), false);
     }
 
     public void resign_cb ()
@@ -1564,20 +1485,17 @@ Copyright © 2015–2016 Sahil Sareen""";
                             _("_Resign"), ResponseType.ACCEPT,
                             null);
 
-        var response = dialog.run ();
-        dialog.destroy ();
+        dialog.response.connect ((_dialog, response) => {
+                dialog.destroy ();
 
-        if (response == ResponseType.ACCEPT)
-        {
-            if (human_player != null)
-                human_player.resign ();
-            else
-                game.current_player.resign ();
-        }
-        else
-        {
-            game.unpause ();
-        }
+                if (response != ResponseType.ACCEPT)
+                    game.unpause ();
+                else if (human_player != null)
+                    human_player.resign ();
+                else
+                    game.current_player.resign ();
+            });
+        dialog.present ();
     }
 
     public void undo_move_cb ()
@@ -1751,7 +1669,7 @@ Copyright © 2015–2016 Sahil Sareen""";
     {
         if (preferences_dialog != null)
         {
-            preferences_dialog.run ();
+            preferences_dialog.present ();
             return;
         }
 
@@ -1820,7 +1738,7 @@ Copyright © 2015–2016 Sahil Sareen""";
         var theme_combo = (ComboBox) preferences_builder.get_object ("piece_style_combo");
         set_combo (theme_combo, 1, settings.get_string ("piece-theme"));
 
-        preferences_dialog.response.connect (preferences_response_cb);
+        preferences_dialog.response.connect ((_dialog, response) => _dialog.hide ());
         clock_type_combo.changed.connect (clock_type_changed_cb);
         timer_increment_units_combo.changed.connect (timer_increment_units_changed_cb);
         side_combo.changed.connect (side_combo_changed_cb);
@@ -1841,7 +1759,7 @@ Copyright © 2015–2016 Sahil Sareen""";
             difficulty_combo.sensitive = false;
         }
 
-        preferences_dialog.run ();
+        preferences_dialog.present ();
     }
 
     private void set_combo (ComboBox combo, int value_index, string value)
@@ -2186,18 +2104,6 @@ Copyright © 2015–2016 Sahil Sareen""";
         settings.set_string ("clock-type", clock_type.to_string ());
     }
 
-    private inline void preferences_response_cb (Widget widget, int response_id)
-    {
-        preferences_dialog.hide ();
-    }
-
-    [CCode (cname = "preferences_delete_event_cb", instance_pos = -1)]
-    public bool preferences_delete_event_cb (Widget widget, Gdk.Event event)
-    {
-        preferences_response_cb (widget, ResponseType.CANCEL);
-        return true;
-    }
-
     private inline void piece_style_combo_changed_cb (ComboBox combo)
     {
         settings.set_string ("piece-theme", get_combo (combo, 1));
@@ -2242,7 +2148,7 @@ Copyright © 2015–2016 Sahil Sareen""";
         about_dialog.translator_credits = _("translator-credits");
         about_dialog.website = "https://wiki.gnome.org/Apps/Chess";
         about_dialog.logo_icon_name = "org.gnome.Chess";
-        about_dialog.response.connect (about_response_cb);
+        about_dialog.response.connect (() => { about_dialog.destroy (); about_dialog = null; });
     }
 
     private void run_invalid_pgn_dialog ()
@@ -2253,9 +2159,7 @@ Copyright © 2015–2016 Sahil Sareen""";
                                                     ButtonsType.NONE,
                                                     _("This does not look like a valid PGN game."));
         invalid_pgn_dialog.add_button (_("_OK"), ResponseType.OK);
-
-        invalid_pgn_dialog.run ();
-        invalid_pgn_dialog.destroy ();
+        invalid_pgn_dialog.present ();
     }
 
     private void run_invalid_move_dialog (string error_message)
@@ -2266,15 +2170,7 @@ Copyright © 2015–2016 Sahil Sareen""";
                                                      ButtonsType.NONE,
                                                      error_message);
         invalid_move_dialog.add_button (_("_OK"), ResponseType.OK);
-
-        invalid_move_dialog.run ();
-        invalid_move_dialog.destroy ();
-    }
-
-    private void about_response_cb (int response_id)
-    {
-        about_dialog.destroy ();
-        about_dialog = null;
+        invalid_move_dialog.present ();
     }
 
     private void update_pgn_time_remaining ()
@@ -2318,36 +2214,38 @@ Copyright © 2015–2016 Sahil Sareen""";
             save_dialog.add_filter (all_filter);
         }
 
-        var response_id = save_dialog.run ();
-        if (response_id == ResponseType.ACCEPT)
-        {
-            update_pgn_time_remaining ();
+        save_dialog.response.connect ((_save_dialog, response) => {
+                _save_dialog.destroy ();
+                if (response != ResponseType.ACCEPT)
+                    return;
 
-            try
-            {
-                game_file = save_dialog.get_file ();
-                save_dialog.destroy ();
-                save_dialog = null;
+                update_pgn_time_remaining ();
 
-                pgn_game.write (game_file);
-                headerbar.set_subtitle (game_file.get_basename ());
-                disable_window_action (SAVE_GAME_ACTION_NAME);
-                game_needs_saving = false;
-            }
-            catch (Error e)
-            {
-                var error_dialog = new MessageDialog (window,
-                                                      DialogFlags.MODAL,
-                                                      MessageType.ERROR,
-                                                      ButtonsType.NONE,
-                                                      _("Failed to save game: %s"),
-                                                      e.message);
-                error_dialog.add_button (_("_OK"), ResponseType.OK);
+                try
+                {
+                    game_file = save_dialog.get_file ();
+                    save_dialog.destroy ();
+                    save_dialog = null;
 
-                error_dialog.run ();
-                error_dialog.destroy ();
-            }
-        }
+                    pgn_game.write (game_file);
+                    headerbar.set_subtitle (game_file.get_basename ());
+                    disable_window_action (SAVE_GAME_ACTION_NAME);
+                    game_needs_saving = false;
+                }
+                catch (Error e)
+                {
+                    var error_dialog = new MessageDialog (window,
+                                                          DialogFlags.MODAL,
+                                                          MessageType.ERROR,
+                                                          ButtonsType.NONE,
+                                                          _("Failed to save game: %s"),
+                                                          e.message);
+                    error_dialog.add_button (_("_OK"), ResponseType.OK);
+
+                    error_dialog.present ();
+                }
+            });
+        save_dialog.show ();
     }
 
     public void save_game_cb ()
@@ -2378,9 +2276,11 @@ Copyright © 2015–2016 Sahil Sareen""";
 
     public void open_game_cb ()
     {
-        if (!prompt_save_game (_("Save this game before loading another one?")))
-            return;
+        prompt_save_game (_("Save this game before loading another one?"), true);
+    }
 
+    private void open_game ()
+    {
         /* Show active dialog */
         if (open_dialog == null)
         {
@@ -2404,15 +2304,17 @@ Copyright © 2015–2016 Sahil Sareen""";
             open_dialog.add_filter (all_filter);
         }
 
-        var response_id = open_dialog.run ();
-        if (response_id == ResponseType.ACCEPT)
-        {
-            game_file = open_dialog.get_file ();
-            open_dialog.destroy ();
-            open_dialog = null;
+        open_dialog.response.connect ((_open_dialog, response) => {
+                if (response != ResponseType.ACCEPT)
+                    return;
 
-            load_game (game_file);
-        }
+                game_file = open_dialog.get_file ();
+                open_dialog.destroy ();
+                open_dialog = null;
+
+                load_game (game_file);
+            });
+        open_dialog.show ();
     }
 
     private void start_new_game ()

@@ -74,11 +74,10 @@ public class ChessScene : Object
     private bool _can_move[64];
 
     public bool animating = false;
-    private Timer animation_timer;
+    private Timer animation_timer = new Timer ();
     private double animation_time;
 
     public signal bool is_human (ChessPlayer player);
-    public signal PieceType? choose_promotion_type ();
     public signal void changed ();
 
     public int selected_rank = -1;
@@ -194,9 +193,10 @@ public class ChessScene : Object
         set { _move_format = value; changed (); }
     }
 
-    public ChessScene ()
+    public Gtk.ApplicationWindow window { private get; internal construct; }
+    public ChessScene (Gtk.ApplicationWindow window)
     {
-        animation_timer = new Timer ();
+        Object (window: window);
     }
 
     public void select_square (int file, int rank)
@@ -214,12 +214,18 @@ public class ChessScene : Object
         if (file == selected_file && rank == selected_rank)
         {
             selected_rank = selected_file = -1;
+
+            update_board ();
+            changed ();
         }
         /* Select new piece */
         else if (piece != null && piece.player == game.current_player)
         {
             selected_rank = rank;
             selected_file = file;
+
+            update_board ();
+            changed ();
         }
         /* Move to this square */
         else if (selected_file != -1)
@@ -228,26 +234,119 @@ public class ChessScene : Object
                 rank, file, false);
             if (can_move && (get_selected_piece ()).type == PieceType.PAWN &&
                 (rank == 0 || rank == 7))
+                show_promotion_dialog (file, rank);
+            else    // that part is probably not needed, but I do not know the code enough
             {
-                // Prompt user for selecting promotion type
-                PieceType? promotion_selection = choose_promotion_type ();
+                // Need to check selected_file here again for promotion case
+                if (selected_file != -1 &&
+                    game.current_player.move_with_coords (selected_rank, selected_file, rank, file))
+                    selected_rank = selected_file = -1;
+
+                update_board ();
+                changed ();
+            }
+        }
+    }
+
+    private enum PromotionTypeSelected
+    {
+        QUEEN,
+        KNIGHT,
+        ROOK,
+        BISHOP
+    }
+    private inline void show_promotion_dialog (int file, int rank)
+    {
+        Gtk.Builder promotion_type_selector_builder = new Gtk.Builder.from_resource ("/org/gnome/Chess/ui/promotion-type-selector.ui");
+
+        Gtk.Dialog promotion_type_selector_dialog = (Gtk.Dialog) promotion_type_selector_builder.get_object ("dialog_promotion_type_selector");
+        promotion_type_selector_dialog.set_transient_for (window);
+
+        string color;
+        if (game.current_player.color == Color.WHITE)
+            color = "white";
+        else
+            color = "black";
+
+        var filename = Path.build_filename (PKGDATADIR, "pieces", theme_name, "%sQueen.svg".printf (color));
+        set_piece_image ((Gtk.Image) promotion_type_selector_builder.get_object ("image_queen"), filename);
+
+        filename = Path.build_filename (PKGDATADIR, "pieces", theme_name, "%sKnight.svg".printf (color));
+        set_piece_image ((Gtk.Image) promotion_type_selector_builder.get_object ("image_knight"), filename);
+
+        filename = Path.build_filename (PKGDATADIR, "pieces", theme_name, "%sRook.svg".printf (color));
+        set_piece_image ((Gtk.Image) promotion_type_selector_builder.get_object ("image_rook"), filename);
+
+        filename = Path.build_filename (PKGDATADIR, "pieces", theme_name, "%sBishop.svg".printf (color));
+        set_piece_image ((Gtk.Image) promotion_type_selector_builder.get_object ("image_bishop"), filename);
+
+     // promotion_type_selector_builder.connect_signals (this);
+
+        promotion_type_selector_dialog.response.connect ((_dialog, response) => {
+                _dialog.destroy ();
+
+                PieceType? selection = null;
+                switch (response)
+                {
+                    case PromotionTypeSelected.QUEEN:
+                        selection = PieceType.QUEEN;
+                        break;
+                    case PromotionTypeSelected.KNIGHT:
+                        selection = PieceType.KNIGHT;
+                        break;
+                    case PromotionTypeSelected.ROOK:
+                        selection = PieceType.ROOK;
+                        break;
+                    case PromotionTypeSelected.BISHOP:
+                        selection = PieceType.BISHOP;
+                        break;
+                }
 
                 // If promotion dialog is closed, do nothing
-                if (promotion_selection == null)
+                if (selection == null)
                     return;
 
                 game.current_player.move_with_coords (selected_rank,
-                    selected_file, rank, file, true, promotion_selection);
+                    selected_file, rank, file, true, selection);
                 selected_rank = selected_file = -1;
-            }
-            // Need to check selected_file here again for promotion case
-            if (selected_file != -1 &&
-                game.current_player.move_with_coords (selected_rank, selected_file, rank, file))
-                selected_rank = selected_file = -1;
-        }
 
-        update_board ();
-        changed ();
+                // Need to check selected_file here again for promotion case
+                if (selected_file != -1 &&
+                    game.current_player.move_with_coords (selected_rank, selected_file, rank, file))
+                    selected_rank = selected_file = -1;
+
+                update_board ();
+                changed ();
+            });
+        promotion_type_selector_dialog.present ();
+    }
+    private static void set_piece_image (Gtk.Image image, string filename)
+    {
+//        int width, height;
+//        if (!icon_size_lookup (IconSize.DIALOG, out width, out height))
+//            return;
+        int width = 100;
+        int height = 100;
+
+        try
+        {
+            var h = new Rsvg.Handle.from_file (filename);
+
+            var s = new Cairo.ImageSurface (Cairo.Format.ARGB32, width, height);
+            var c = new Cairo.Context (s);
+            var m = Cairo.Matrix.identity ();
+            m.scale ((double) width / h.width, (double) height / h.height);
+            c.set_matrix (m);
+            h.render_cairo (c);
+
+            var p = Gdk.pixbuf_get_from_surface (s, 0, 0, width, height);
+            image.set_from_pixbuf (p);
+        }
+        catch (Error e)
+        {
+            warning ("Failed to load image %s: %s", filename, e.message);
+            return;
+        }
     }
 
     private void moved_cb (ChessGame game, ChessMove move)
@@ -338,7 +437,7 @@ public class ChessScene : Object
         {
             animating = true;
             animation_timer.start ();
-            animation_time = 0;
+            animation_time = 0.0;
             game.add_hold ();
 
             /* Animate every 10ms (up to 100fps) */
