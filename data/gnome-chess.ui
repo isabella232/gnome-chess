@@ -49,11 +49,11 @@
   </object>
   <object class="GtkApplicationWindow" id="gnome_chess_app">
     <property name="default-width">700</property>
+    <property name="title" translatable="yes">Chess</property>
 <!--    <signal name="delete-event" handler="gnome_chess_app_delete_event_cb" swapped="no"/>-->
     <child type="titlebar">
       <object class="GtkHeaderBar" id="headerbar">
         <property name="show-title-buttons">True</property>
-        <property name="title" translatable="yes">Chess</property>
         <child type="start">
           <object class="GtkButton" id="new-game-button">
             <property name="halign">center</property>
